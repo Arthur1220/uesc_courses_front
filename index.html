@@ -4,39 +4,139 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jogo da Velha</title>
+    <link rel="icon" href="https://play-lh.googleusercontent.com/Ionemc_1OWoiTegtsUzawDelIfPlXO5Jl-crMWnOrNJDXdlJJ49TSFO8QsGSBApKjA=w526-h296-rw">
     <style>
+        /* Estilos da página */
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+            box-sizing: border-box;
+            height: 100vh;
+            margin: 0;
+            background: #f7f7f7;
+        }
+        /* Estilo do título */
+        .title {
+            text-align: center;
+            border: 2px solid #000;
+            padding: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.15);
+        }
+        /* Estilo do elemento que mostra o jogador atual */
+        .currentPlayer {
+            text-align: center;
+        }
+        /* Estilo do tabuleiro */
         .board {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 0px;
+            width: 500px;
+            height: 500px;
+            margin: 0 auto;
         }
+        /* Estilo das células do tabuleiro */
         .cell {
-            width: 100px;
-            height: 100px;
-            border: 1px solid #000;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            width: 100%;
+            height: 100%;
+            min-width: 100px;
+            min-height: 100px;
+            border: none;
+            font-size: 34px;
+            overflow: hidden;
+        }
+        /* Estilo das bordas das células */
+        .cell:nth-child(n + 4):nth-child(-n + 6),
+        .cell:nth-child(n + 7):nth-child(-n + 9) {
+            border-top: 2px solid #000;
+        }
+        .cell:nth-child(3n + 2),
+        .cell:nth-child(3n + 3) {
+            border-left: 2px solid #000;
+        }
+        /* Estilo do botão de reinício */
+        #restartButton {
+            display: inline-block;
+            padding: 10px 40px;
+            margin-top: 5px;
+            border: none;
+            background-color: #000;
+            color: #fff;
+            text-align: center;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+        } 
+        #restartButton:hover {
+            background-color: rgba(0, 0, 0, 0.400);
+        }
+        /* Estilo da mensagem de vitória */
+        .winning-message {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            flex-direction: column;
+        }
+        .winning-message-button {
+            font-size: 2.5rem;
+            background-color: #000;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+            border: none;
+            margin-top: 16px;
+            color: white;
+        }
+        .winning-message-button:hover {
+            background-color: rgba(0, 0, 0, 0.600);
+        }
+        .winning-message-text {
+            color: white;
+            font-size: 5rem;
+        }
+        .show-winning-message {
+            display: flex;
         }
     </style>
 </head>
 <body>
+    <h1 class="title">JOGO DA VELHA</h1>
     <div class="board" id="board"></div>
-
+    <h2 class="currentPlayer"></h2>
+    <button id="restartButton">Reiniciar</button>
+    <div class="winning-message" data-winning-message>
+        <p class="winning-message-text" data-winning-message-text>X Venceu!</p>
+        <button class="winning-message-button" data-restart-button>Reiniciar!</button>
+    </div>
     <script>
+        // Seleciona os elementos do DOM
         const board = document.getElementById('board');
-        const cells = Array.from({ length: 9 }, (_, index) => {
-            const cell = document.createElement('div');
-            cell.classList.add('cell');
-            cell.dataset.index = index;
-            cell.addEventListener('click', handleCellClick);
-            return cell;
-        });
+        const currentPlayerElement = document.querySelector('.currentPlayer');
+        const winningMessageTextElement = document.querySelector("[data-winning-message-text]");
+        const winningMessage = document.querySelector("[data-winning-message]");
+        const winningMessageButton = document.querySelector("[data-restart-button]");
+        const restartButton = document.getElementById('restartButton');
 
-        cells.forEach(cell => board.appendChild(cell));
-
+        // Estado inicial do jogo
         let currentPlayer = 'X';
+        currentPlayerElement.textContent = `Jogador da vez: ${currentPlayer}`;
+        const boardState = Array(9).fill('');
+
+        // Combinações vencedoras
         const winningCombos = [
             [0, 1, 2],
             [3, 4, 5],
@@ -47,26 +147,78 @@
             [0, 4, 8],
             [2, 4, 6]
         ];
-        const boardState = Array(9).fill('');
 
-        function handleCellClick(event) {
-            const cellIndex = event.target.dataset.index;
-            if (boardState[cellIndex] === '' && !checkWinner()) {
-                boardState[cellIndex] = currentPlayer;
-                event.target.textContent = currentPlayer;
-                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+        // Cria as células do tabuleiro
+        const cells = Array.from({ length: 9 }, (_, index) => {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.dataset.index = index;
+            cell.addEventListener('click', handleCellClick);
+            return cell;
+        });
+
+        cells.forEach(cell => board.appendChild(cell));
+
+        // Função para reiniciar o tabuleiro
+        const resetBoard = () => {
+            boardState.fill('');
+            currentPlayer = 'X';
+            cells.forEach(cell => {
+                cell.textContent = '';
+            });
+            currentPlayerElement.textContent = `Jogador da vez: ${currentPlayer}`;
+            winningMessage.classList.remove("show-winning-message");
+        };
+
+        restartButton.addEventListener('click', resetBoard);
+        winningMessageButton.addEventListener('click', resetBoard);
+
+        // Função para finalizar o jogo
+        const endGame = (isDraw) => {
+            if (isDraw) {
+                winningMessageTextElement.innerText = "Empate!";
+            } else {
+                winningMessageTextElement.innerText = `${currentPlayer} Venceu!`;
             }
-        }
+            winningMessage.classList.add("show-winning-message");
+        };
 
-        function checkWinner() {
-            for (const combo of winningCombos) {
-                const [a, b, c] = combo;
-                if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
-                    alert(`Player ${boardState[a]} wins!`);
+        // Verifica se houve vitória
+        const checkGameOver = () => {
+            for (let combo of winningCombos) {
+                if (boardState[combo[0]] && boardState[combo[0]] === boardState[combo[1]] && boardState[combo[0]] === boardState[combo[2]]) {
                     return true;
                 }
             }
             return false;
+        };
+
+        // Verifica se houve empate
+        const checkForDraw = () => {
+            return boardState.every(cell => cell !== '');
+        };
+
+        // Coloca a marca do jogador na célula
+        const placeMark = (cell, currentClass) => {
+            const index = cell.dataset.index;
+            boardState[index] = currentClass;
+            cell.textContent = currentClass.toUpperCase();
+        };
+
+        // Função que lida com o clique nas células
+        function handleCellClick(event) {
+            const cell = event.target;
+            if (boardState[cell.dataset.index] !== '') return;
+            const currentClass = currentPlayer;
+            placeMark(cell, currentClass);
+            if (checkGameOver()) {
+                endGame(false);
+            } else if (checkForDraw()) {
+                endGame(true);
+            } else {
+                currentPlayer = currentPlayer === 'O' ? 'X' : 'O';
+                currentPlayerElement.textContent = `Jogador da vez: ${currentPlayer}`;
+            }
         }
     </script>
 </body>
